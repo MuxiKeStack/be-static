@@ -6,12 +6,14 @@ import (
 	"github.com/MuxiKeStack/be-static/pkg/logger"
 	"github.com/MuxiKeStack/be-static/repository/cache"
 	"github.com/MuxiKeStack/be-static/repository/dao"
+	"github.com/ecodeclub/ekit/slice"
 	"time"
 )
 
 type StaticRepository interface {
 	GetStaticByName(ctx context.Context, name string) (domain.Static, error)
 	SaveStatic(ctx context.Context, static domain.Static) error
+	GetStaticsByLabels(ctx context.Context, labels map[string]string) ([]domain.Static, error)
 }
 
 type CachedStaticRepository struct {
@@ -33,6 +35,7 @@ func (repo *CachedStaticRepository) GetStaticByName(ctx context.Context, name st
 	res = domain.Static{
 		Name:    static.Name,
 		Content: static.Content,
+		Labels:  static.Labels,
 	}
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -47,10 +50,22 @@ func (repo *CachedStaticRepository) SaveStatic(ctx context.Context, static domai
 	err := repo.dao.Upsert(ctx, dao.Static{
 		Name:    static.Name,
 		Content: static.Content,
+		Labels:  static.Labels,
 	})
 	if err != nil {
 		return err
 	}
 	// 更新缓存，或者立刻设置缓存
 	return repo.cache.SetStatic(ctx, static)
+}
+
+func (repo *CachedStaticRepository) GetStaticsByLabels(ctx context.Context, labels map[string]string) ([]domain.Static, error) {
+	statics, err := repo.dao.GetStaticsByLabels(ctx, labels)
+	return slice.Map(statics, func(idx int, src dao.Static) domain.Static {
+		return domain.Static{
+			Name:    src.Name,
+			Content: src.Content,
+			Labels:  src.Labels,
+		}
+	}), err
 }

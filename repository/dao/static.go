@@ -11,6 +11,7 @@ import (
 type StaticDAO interface {
 	GetStaticByName(ctx context.Context, name string) (Static, error)
 	Upsert(ctx context.Context, static Static) error
+	GetStaticsByLabels(ctx context.Context, labels map[string]string) ([]Static, error)
 }
 
 type MongoDBStaticDAO struct {
@@ -33,6 +34,7 @@ func (dao *MongoDBStaticDAO) Upsert(ctx context.Context, static Static) error {
 	update := bson.M{
 		"$set": bson.M{
 			"content": static.Content,
+			"labels":  static.Labels,
 			"utime":   time.Now().Format(time.DateTime),
 		},
 	}
@@ -40,8 +42,24 @@ func (dao *MongoDBStaticDAO) Upsert(ctx context.Context, static Static) error {
 	return err
 }
 
+func (dao *MongoDBStaticDAO) GetStaticsByLabels(ctx context.Context, labels map[string]string) ([]Static, error) {
+	filter := make(bson.M, 5)
+	for key, val := range labels {
+		filter["labels."+key] = val
+	}
+	cursor, err := dao.staticCol.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	var res []Static
+	err = cursor.All(ctx, &res)
+	return res, err
+}
+
 type Static struct {
-	Name    string `bson:"name"` // 这个是唯一索引映射，我忽略掉了MongoDB的_id
-	Content string `bson:"content"`
-	Utime   string `bson:"utime"`
+	Name    string            `bson:"name"` // 这个是唯一索引映射，我忽略掉了MongoDB的_id
+	Content string            `bson:"content"`
+	Utime   string            `bson:"utime"`
+	Labels  map[string]string `bson:"labels"`
 }

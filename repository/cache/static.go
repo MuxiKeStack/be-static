@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/MuxiKeStack/be-static/domain"
 	"github.com/redis/go-redis/v9"
@@ -23,19 +24,22 @@ func NewRedisStaticCache(cmd redis.Cmdable) StaticCache {
 
 func (cache *RedisStaticCache) GetStatic(ctx context.Context, name string) (domain.Static, error) {
 	key := cache.staticKey(name)
-	content, err := cache.cmd.Get(ctx, key).Result()
+	data, err := cache.cmd.Get(ctx, key).Bytes()
 	if err != nil {
 		return domain.Static{}, err
 	}
-	return domain.Static{
-		Name:    name,
-		Content: content,
-	}, nil
+	var st domain.Static
+	err = json.Unmarshal(data, &st)
+	return st, err
 }
 
 func (cache *RedisStaticCache) SetStatic(ctx context.Context, static domain.Static) error {
 	key := cache.staticKey(static.Name)
-	return cache.cmd.Set(ctx, key, static.Content, time.Hour*24*7).Err()
+	data, err := json.Marshal(static)
+	if err != nil {
+		return err
+	}
+	return cache.cmd.Set(ctx, key, data, time.Hour*24*7).Err()
 }
 
 func (cache *RedisStaticCache) staticKey(name string) string {

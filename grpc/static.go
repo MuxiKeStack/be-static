@@ -5,6 +5,7 @@ import (
 	staticv1 "github.com/MuxiKeStack/be-api/gen/proto/static/v1"
 	"github.com/MuxiKeStack/be-static/domain"
 	"github.com/MuxiKeStack/be-static/service"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/go-kratos/kratos/v2/transport/grpc"
 )
 
@@ -23,6 +24,7 @@ func (s *StaticServiceServer) GetStaticByName(ctx context.Context, request *stat
 		Static: &staticv1.Static{
 			Name:    static.Name,
 			Content: static.Content,
+			Labels:  static.Labels,
 		},
 	}, err
 }
@@ -31,8 +33,22 @@ func (s *StaticServiceServer) SaveStatic(ctx context.Context, request *staticv1.
 	err := s.svc.SaveStatic(ctx, domain.Static{
 		Name:    request.GetStatic().GetName(),
 		Content: request.GetStatic().GetContent(),
+		Labels:  request.GetStatic().GetLabels(),
 	})
 	return &staticv1.SaveStaticResponse{}, err
+}
+
+func (s *StaticServiceServer) GetStaticsByLabels(ctx context.Context, request *staticv1.GetStaticsByLabelsRequest) (*staticv1.GetStaticsByLabelsResponse, error) {
+	statics, err := s.svc.GetStaticsByLabels(ctx, request.GetLabels())
+	return &staticv1.GetStaticsByLabelsResponse{
+		Statics: slice.Map(statics, func(idx int, src domain.Static) *staticv1.Static {
+			return &staticv1.Static{
+				Name:    src.Name,
+				Content: src.Content,
+				Labels:  src.Labels,
+			}
+		}),
+	}, err
 }
 
 func (s *StaticServiceServer) Register(server *grpc.Server) {

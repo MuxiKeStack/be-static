@@ -9,6 +9,7 @@ import (
 type StaticService interface {
 	GetStaticByName(ctx context.Context, name string) (domain.Static, error)
 	SaveStatic(ctx context.Context, static domain.Static) error
+	GetStaticsByLabels(ctx context.Context, labels map[string]string) ([]domain.Static, error)
 }
 
 type staticService struct {
@@ -25,4 +26,8 @@ func (s *staticService) GetStaticByName(ctx context.Context, name string) (domai
 
 func (s *staticService) SaveStatic(ctx context.Context, static domain.Static) error {
 	return s.repo.SaveStatic(ctx, static)
+}
+
+func (s *staticService) GetStaticsByLabels(ctx context.Context, labels map[string]string) ([]domain.Static, error) {
+	return s.repo.GetStaticsByLabels(ctx, labels)
 }
